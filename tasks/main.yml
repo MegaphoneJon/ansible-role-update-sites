@@ -47,7 +47,6 @@
     command: git pull
     args:
       chdir: "{{ civiroot }}"
-    register: add_result
     become: yes
     become_user: "{{ run_as_user }}"
     register: pull_result
