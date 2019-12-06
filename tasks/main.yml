@@ -50,7 +50,7 @@
     become: yes
     become_user: "{{ run_as_user }}"
     register: pull_result
-    changed_when:  pull_result.stdout != 'Already up-to-date.'
+    changed_when:  pull_result.stdout is match('Already up-to-date.')
 
   # This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
   - name: Upgrade the Civi DB
