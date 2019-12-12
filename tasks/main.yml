@@ -9,8 +9,7 @@
 
 - block:
   - name: check installed CiviCRM version
-    command: mysql {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'
-    become: yes
+    command: "mysql -u{{ db_user }} -p{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }} {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'"
     register: installed_version
     changed_when: false
 
@@ -26,21 +25,27 @@
     file:
       path: "{{ item.path }}"
       state: absent
+    become: yes
+    become_user: "{{ run_as_user }}"
     with_items: "{{ old_db_backups.files }}"
     when: old_db_backups.files is defined and old_db_backups.matched > 0
 
   - name: Check if db already exists
     stat:
       path: "{{ webroot }}/../sql-dumps/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
-    become: yes
     register: existing_backup
+    become: yes
+    become_user: "{{ run_as_user }}"
 
   - name: Back up the databases
     mysql_db:
       state: dump
       name: "{{ crm_db_name }}"
       target: "{{ webroot }}/../sql-dumps/{{ crm_db_name }}.pre-{{civi_ver.content}}.sql.gz"
+      login_user: "{{ db_user }}"
+      login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
     become: yes
+    become_user: "{{ run_as_user }}"
     when: existing_backup.stat is defined and existing_backup.stat.exists == false
 
   - name: git pull
@@ -50,13 +55,32 @@
     become: yes
     become_user: "{{ run_as_user }}"
     register: pull_result
-    changed_when:  pull_result.stdout is match('Already up-to-date.')
+    changed_when:  not pull_result.stdout is match('Already up to date.')
 
   # This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
   - name: Upgrade the Civi DB
     command: "cv -n upgrade:db --cwd {{ webroot }}"
     become: yes
     become_user: "{{ run_as_user }}"
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
     when: installed_version.stdout != civi_ver.content
+
+  - name: Check for pending extension database updates
+    command: "cv ev 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
+    become: yes
+    become_user: "{{ run_as_user }}"
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
+    changed_when: false
+    register: pendingUpdates
+
+  - name: Run extension database updates
+    command: "cv -n ext:upgrade-db --cwd {{ webroot }}"
+    become: yes
+    become_user: "{{ run_as_user }}"
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
+    when: pendingUpdates.stdout == "true"
 
   when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
