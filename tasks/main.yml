@@ -1,16 +1,86 @@
 ---
-- name: Get the latest CiviCRM version number
-  local_action:
-    module: uri
-    url: http://latest.civicrm.org/stable.php
-    return_content: yes
-  run_once: true
-  register: civi_ver
-
+# WP updates
 - block:
+  - name: See if WP core needs updating
+    command: wp core check-update --field=version --format=csv
+    args:
+      chdir: "{{ webroot }}"
+    register: latest_core_version
+    changed_when: false
+    failed_when: false
+
+  - name: Find old WP database backups
+    find:
+      age: 1d
+      path: "{{ webroot }}/../sql-dumps"
+      patterns: "{{ cms_db_name }}.pre-*.sql.gz"
+      age_stamp: ctime
+    register: old_wp_db_backups
+
+  - name: Delete old WP database backups
+    file:
+      path: "{{ item.path }}"
+      state: absent
+    become: yes
+    become_user: "{{ run_as_user }}"
+    with_items: "{{ old_db_backups.files }}"
+    when: old_wp_db_backups.files is defined and old_wp_db_backups.matched > 0
+
+  - name: Check if WP db backup already exists
+    stat:
+      path: "{{ webroot }}/../sql-dumps/{{ cms_db_name }}.pre-{{ latest_core_version.stdout }}.sql.gz"
+    register: existing_wp_backup
+    become: yes
+    become_user: "{{ run_as_user }}"
+    when: latest_core_version.stdout is defined and latest_core_version.stdout != ""
+
+  - name: Back up the databases
+    mysql_db:
+      state: dump
+      name: "{{ cms_db_name }}"
+      target: "{{ webroot }}/../sql-dumps/{{ cms_db_name }}.pre-{{ latest_core_version.stdout }}.sql.gz"
+      login_user: "{{ db_user }}"
+      login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
+    become: yes
+    become_user: "{{ run_as_user }}"
+    when: existing_wp_backup.stat is defined and existing_wp_backup.stat.exists == false and latest_core_version.stdout is defined and latest_core_version.stdout != ""
+
+  - name: git pull
+    command: git pull
+    args:
+      chdir: "{{ civiroot }}"
+    become: yes
+    become_user: "{{ run_as_user }}"
+    register: pull_result
+    changed_when:  not pull_result.stdout is match('Already up to date.')
+
+  - name: Upgrade the WP DB
+    command: "wp core update-db"
+    args:
+      chdir: "{{ webroot }}"
+    become: yes
+    become_user: "{{ run_as_user }}"
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
+    when: latest_core_version.stdout is defined and latest_core_version.stdout != ""
+
+  when: cms == 'WordPress' and contract_type is search("WordPress Maintenance")
+
+# Civi updates
+- block:
+  - name: Get the latest CiviCRM version number
+    local_action:
+      module: uri
+      url: http://latest.civicrm.org/stable.php
+      return_content: yes
+    run_once: true
+    changed_when: false
+    failed_when: false
+    register: civi_ver
+
   - name: check installed CiviCRM version
     command: "mysql -u{{ db_user }} -p{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }} {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'"
-    register: installed_version
+    register: installed_civi_version
     changed_when: false
 
   - name: Find old database backups
@@ -64,7 +134,7 @@
     become_user: "{{ run_as_user }}"
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
-    when: installed_version.stdout != civi_ver.content
+    when: installed_civi_version.stdout != civi_ver.content
 
   - name: Check for pending extension database updates
     command: "cv ev 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
