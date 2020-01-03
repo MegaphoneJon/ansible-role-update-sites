@@ -23,7 +23,7 @@
       state: absent
     become: yes
     become_user: "{{ run_as_user }}"
-    with_items: "{{ old_db_backups.files }}"
+    with_items: "{{ old_wp_db_backups.files }}"
     when: old_wp_db_backups.files is defined and old_wp_db_backups.matched > 0
 
   - name: Check if WP db backup already exists
