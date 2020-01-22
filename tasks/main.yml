@@ -64,6 +64,12 @@
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
     when: latest_core_version.stdout is defined and latest_core_version.stdout != ""
 
+  - name: Clear "last updated" times so plugin updates are reflected in monitoring
+    command: wp transient delete --network --all
+    args:
+      chdir: "{{ webroot }}"
+    changed_when: false
+
   when: cms == 'WordPress' and contract_type is search("WordPress Maintenance")
 
 # Civi updates
