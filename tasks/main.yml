@@ -68,6 +68,8 @@
     command: wp transient delete --network --all
     args:
       chdir: "{{ webroot }}"
+    become: yes
+    become_user: "{{ run_as_user }}"
     changed_when: false
 
   when: cms == 'WordPress' and contract_type is search("WordPress Maintenance")
