@@ -48,7 +48,7 @@
   - name: git pull
     command: git pull
     args:
-      chdir: "{{ civiroot }}"
+      chdir: "{{ webroot }}"
     become: yes
     become_user: "{{ run_as_user }}"
     register: pull_result
@@ -161,4 +161,4 @@
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
     when: pendingUpdates.stdout == "true"
 
-  when: contract_type is search("Civi Maintenance") and freeze_crm != "1"
+  when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
