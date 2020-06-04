@@ -162,3 +162,9 @@
     when: pendingUpdates.stdout == "true"
 
   when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
+
+  # Drupal
+- name: Run db updates for Drupal
+  command: "drush --root={{ webroot }} -y updatedb"
+  become_user: "{{ run_as_user }}"
+  when: contract_type is search("Drupal Maintenance") and cms == 'Drupal'
