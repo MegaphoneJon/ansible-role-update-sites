@@ -1,129 +1,88 @@
 ---
+- name: Get current Drupal core version
+  command: "drush -y --root={{ webroot }} status --fields=drupal-version --field-labels=0"
+  register: latest_core_version
+  become: yes
+  become_user: "{{ run_as_user }}"
+  changed_when: no
+  when: cms == 'Drupal' and contract_type is search("Drupal Maintenance")
+
+- name: See if WP core needs updating
+  command: wp core check-update --field=version --format=csv
+  args:
+    chdir: "{{ webroot }}"
+  register: latest_core_version
+  changed_when: false
+  failed_when: false
+  when: cms == 'WordPress' and contract_type is search("WordPress Maintenance")
+
+- name: Find old CMS database backups
+  find:
+    age: 1d
+    path: "{{ webroot }}/../sql-dumps"
+    patterns: "{{ cms_db_name }}.upgradebackup.sql.gz"
+    age_stamp: ctime
+  register: old_cms_db_backups
+  when: contract_type is search("Maintenance")
+
+- name: Delete old CMS database backups
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  become: yes
+  become_user: "{{ run_as_user }}"
+  with_items: "{{ old_cms_db_backups.files }}"
+  when: old_cms_db_backups.files is defined and old_cms_db_backups.matched > 0
+
+- name: Check if CMS db backup already exists
+  stat:
+    path: "{{ webroot }}/../sql-dumps/{{ cms_db_name }}.upgradebackup.sql.gz"
+  register: existing_cms_backup
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: latest_core_version.stdout is defined and latest_core_version.stdout != ""
+
+- name: Back up the databases
+  mysql_db:
+    state: dump
+    name: "{{ cms_db_name }}"
+    target: "{{ webroot }}/../sql-dumps/{{ cms_db_name }}.upgradebackup.sql.gz"
+    login_user: "{{ db_user }}"
+    login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_core_version.stdout is defined and latest_core_version.stdout != ""
+
+- name: git pull
+  command: git pull
+  args:
+    chdir: "{{ webroot }}"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  register: pull_result
+  changed_when:  not pull_result.stdout is match('Already up to date.')
+
 # Drupal updates
 - block:
-  - name: Get current Drupal core version
-    command: "drush -y --root={{ webroot }} status --fields=drupal-version --field-labels=0"
-    register: latest_core_version
-    become: yes
-    become_user: "{{ run_as_user }}"
-    changed_when: no
-    when: cms == 'Drupal' and contract_type is search("Drupal Maintenance")
-
-  - name: Find old CMS database backups
-    find:
-      age: 1d
-      path: "{{ webroot }}/../sql-dumps"
-      patterns: "{{ cms_db_name }}.pre-*.sql.gz"
-      age_stamp: ctime
-    register: old_cms_db_backups
-
-  - name: Delete old CMS database backups
-    file:
-      path: "{{ item.path }}"
-      state: absent
-    become: yes
-    become_user: "{{ run_as_user }}"
-    with_items: "{{ old_cms_db_backups.files }}"
-    when: old_cms_db_backups.files is defined and old_cms_db_backups.matched > 0
-
-  - name: Check if CMS db backup already exists
-    stat:
-      path: "{{ webroot }}/../sql-dumps/{{ cms_db_name }}.pre-{{ latest_core_version.stdout | trim }}.sql.gz"
-    register: existing_cms_backup
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: latest_core_version.stdout is defined and latest_core_version.stdout != ""
-
-  - name: Back up the databases
-    mysql_db:
-      state: dump
-      name: "{{ cms_db_name }}"
-      target: "{{ webroot }}/../sql-dumps/{{ cms_db_name }}.pre-{{ latest_core_version.stdout | trim }}.sql.gz"
-      login_user: "{{ db_user }}"
-      login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_core_version.stdout is defined and latest_core_version.stdout != ""
-
-  - name: git pull
-    command: git pull
-    args:
-      chdir: "{{ webroot }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    register: pull_result
-    changed_when:  not pull_result.stdout is match('Already up to date.')
-
   - name: Check for database updates
     command: "drush -y --root={{ webroot }} updatedb-status"
     become: yes
     become_user: "{{ run_as_user }}"
     changed_when: no
     register: updatedb_status
+    when: cms == 'Drupal' and contract_type is search("Drupal Maintenance")
 
   - name: Run database updates
     command: "drush -y --root={{ webroot }} updatedb"
     when: updatedb_status.stdout != 'No database updates required'
     become: yes
     become_user: "{{ run_as_user }}"
+    when: cms == 'Drupal' and contract_type is search("Drupal Maintenance")
 
   when: cms == 'Drupal' and contract_type is search("Drupal Maintenance")
 
 # WP updates
 - block:
-  - name: See if WP core needs updating
-    command: wp core check-update --field=version --format=csv
-    args:
-      chdir: "{{ webroot }}"
-    register: latest_core_version
-    changed_when: false
-    failed_when: false
-
-  - name: Find old WP database backups
-    find:
-      age: 1d
-      path: "{{ webroot }}/../sql-dumps"
-      patterns: "{{ cms_db_name }}.pre-*.sql.gz"
-      age_stamp: ctime
-    register: old_wp_db_backups
-
-  - name: Delete old WP database backups
-    file:
-      path: "{{ item.path }}"
-      state: absent
-    become: yes
-    become_user: "{{ run_as_user }}"
-    with_items: "{{ old_wp_db_backups.files }}"
-    when: old_wp_db_backups.files is defined and old_wp_db_backups.matched > 0
-
-  - name: Check if WP db backup already exists
-    stat:
-      path: "{{ webroot }}/../sql-dumps/{{ cms_db_name }}.pre-{{ latest_core_version.stdout }}.sql.gz"
-    register: existing_wp_backup
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: latest_core_version.stdout is defined and latest_core_version.stdout != ""
-
-  - name: Back up the databases
-    mysql_db:
-      state: dump
-      name: "{{ cms_db_name }}"
-      target: "{{ webroot }}/../sql-dumps/{{ cms_db_name }}.pre-{{ latest_core_version.stdout }}.sql.gz"
-      login_user: "{{ db_user }}"
-      login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    when: existing_wp_backup.stat is defined and existing_wp_backup.stat.exists == false and latest_core_version.stdout is defined and latest_core_version.stdout != ""
-
-  - name: git pull
-    command: git pull
-    args:
-      chdir: "{{ webroot }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    register: pull_result
-    changed_when:  not pull_result.stdout is match('Already up to date.')
-
   - name: Upgrade the WP DB
     command: "wp core update-db"
     args:
@@ -196,15 +155,6 @@
     become_user: "{{ run_as_user }}"
     when: existing_backup.stat is defined and existing_backup.stat.exists == false
 
-  - name: git pull
-    command: git pull
-    args:
-      chdir: "{{ civiroot }}"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    register: pull_result
-    changed_when:  not pull_result.stdout is match('Already up to date.')
-
   # This is broken on WP if you just upgraded the db. Checking in with Christian Wach on 8/29/18.
   - name: Upgrade the Civi DB
     command: "cv -n upgrade:db --cwd {{ webroot }}"
@@ -233,8 +183,3 @@
 
   when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
 
-  # Drupal
-- name: Run db updates for Drupal
-  command: "drush --root={{ webroot }} -y updatedb"
-  become_user: "{{ run_as_user }}"
-  when: contract_type is search("Drupal Maintenance") and cms == 'Drupal'
