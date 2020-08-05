@@ -54,13 +54,14 @@
   when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_core_version.stdout is defined and latest_core_version.stdout != ""
 
 - name: git pull
-  command: git pull
-  args:
-    chdir: "{{ webroot }}"
+  git:
+    repo: "{{ git_repo_url }}"
+    dest: "{{ gitroot }}"
+    version: master
+    umask: "0007"
+    track_submodules: no
   become: yes
   become_user: "{{ run_as_user }}"
-  register: pull_result
-  changed_when:  not pull_result.stdout is match('Already up to date.')
 
 # Drupal updates
 - block:
