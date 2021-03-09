@@ -120,6 +120,13 @@
   become: yes
   become_user: "{{ run_as_user }}"
 
+- name: Composer install (D8)
+  composer:
+    command: install
+    working_dir: "{{ gitroot }}"
+  when: cms == "Drupal8"
+  become_user: "{{ run_as_user }}"
+
 # Drupal updates
 - block:
   - name: Check for database updates
@@ -128,14 +135,12 @@
     become_user: "{{ run_as_user }}"
     changed_when: no
     register: updatedb_status
-    when: cms == 'Drupal' and contract_type is search("Drupal Maintenance")
 
   - name: Run database updates
     command: "drush -y --root={{ webroot }} updatedb"
     when: updatedb_status.stdout != 'No database updates required'
     become: yes
     become_user: "{{ run_as_user }}"
-    when: cms == 'Drupal' and contract_type is search("Drupal Maintenance")
 
   when: cms == 'Drupal' and contract_type is search("Drupal Maintenance")
 
