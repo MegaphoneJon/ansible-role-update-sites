@@ -125,6 +125,7 @@
     command: install
     working_dir: "{{ gitroot }}"
   when: cms == "Drupal8"
+  become: yes
   become_user: "{{ run_as_user }}"
 
 # Drupal updates
