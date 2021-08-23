@@ -119,6 +119,7 @@
     track_submodules: no
   become: yes
   become_user: "{{ run_as_user }}"
+  notify: cv flush
 
 - name: Composer install (D8)
   composer:
@@ -175,6 +176,7 @@
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
     when: installed_civi_version.stdout != civi_ver.content
+    notify: cv flush
 
   - name: Check for pending extension database updates
     command: "cv ev 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
@@ -184,6 +186,7 @@
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
     changed_when: false
     register: pendingUpdates
+    notify: cv flush
 
   - name: Run extension database updates
     command: "cv -n ext:upgrade-db --cwd {{ webroot }}"
@@ -192,4 +195,5 @@
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
     when: pendingUpdates.stdout == "true"
+    notify: cv flush
   when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
