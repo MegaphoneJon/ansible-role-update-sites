@@ -38,7 +38,7 @@
 - name: Find old CMS database backups
   find:
     age: 1d
-    path: "{{ webroot }}/../sql-dumps"
+    path: "{{ sqldumps_path }}"
     patterns: "{{ cms_db_name }}.upgradebackup.sql.gz"
     age_stamp: ctime
   register: old_cms_db_backups
@@ -55,7 +55,7 @@
 
 - name: Check if CMS db backup already exists
   stat:
-    path: "{{ webroot }}/../sql-dumps/{{ cms_db_name }}.upgradebackup.sql.gz"
+    path: "{{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql.gz"
   register: existing_cms_backup
   become: yes
   become_user: "{{ run_as_user }}"
@@ -65,7 +65,7 @@
   mysql_db:
     state: dump
     name: "{{ cms_db_name }}"
-    target: "{{ webroot }}/../sql-dumps/{{ cms_db_name }}.upgradebackup.sql.gz"
+    target: "{{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql.gz"
     login_user: "{{ db_user }}"
     login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
   become: yes
@@ -76,7 +76,7 @@
   - name: Find old database backups
     find:
       age: 1d
-      path: "{{ webroot }}/../sql-dumps"
+      path: "{{ sqldumps_path }}"
       patterns: "{{ crm_db_name }}.pre-*.sql.gz"
       age_stamp: ctime
     register: old_db_backups
@@ -92,7 +92,7 @@
 
   - name: Check if db already exists
     stat:
-      path: "{{ webroot }}/../sql-dumps/{{ crm_db_name }}.pre-update.sql.gz"
+      path: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql.gz"
     register: existing_backup
     become: yes
     become_user: "{{ run_as_user }}"
@@ -101,7 +101,7 @@
     mysql_db:
       state: dump
       name: "{{ crm_db_name }}"
-      target: "{{ webroot }}/../sql-dumps/{{ crm_db_name }}.pre-update.sql.gz"
+      target: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql.gz"
       login_user: "{{ db_user }}"
       login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
     become: yes
@@ -170,7 +170,7 @@
 # Civi updates
 - block:
   - name: Upgrade the Civi DB
-    command: "cv -n upgrade:db --cwd {{ webroot }}"
+    shell: "PATH=$HOME/bin:$PATH;cv -n upgrade:db --cwd {{ webroot }}"
     become: yes
     become_user: "{{ run_as_user }}"
     environment:
@@ -179,7 +179,7 @@
     notify: cv flush
 
   - name: Check for pending extension database updates
-    command: "cv ev 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
+    shell: "PATH=$HOME/bin:$PATH;cv ev 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
     become: yes
     become_user: "{{ run_as_user }}"
     environment:
@@ -189,7 +189,7 @@
     notify: cv flush
 
   - name: Run extension database updates
-    command: "cv -n ext:upgrade-db --cwd {{ webroot }}"
+    shell: "PATH=$HOME/bin:$PATH;cv -n ext:upgrade-db --cwd {{ webroot }}"
     become: yes
     become_user: "{{ run_as_user }}"
     environment:
