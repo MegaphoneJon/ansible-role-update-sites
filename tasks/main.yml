@@ -68,6 +68,7 @@
     target: "{{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql.gz"
     login_user: "{{ db_user }}"
     login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
+    dump_extra_args: --single-transaction=TRUE
   become: yes
   become_user: "{{ run_as_user }}"
   when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_core_version.stdout is defined and latest_core_version.stdout != ""
