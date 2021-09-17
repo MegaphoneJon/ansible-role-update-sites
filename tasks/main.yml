@@ -105,6 +105,7 @@
       target: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql.gz"
       login_user: "{{ db_user }}"
       login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
+      dump_extra_args: --single-transaction=TRUE
     become: yes
     become_user: "{{ run_as_user }}"
     when: existing_backup.stat is defined and existing_backup.stat.exists == false
