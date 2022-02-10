@@ -116,7 +116,7 @@
   git:
     repo: "{{ git_repo_url }}"
     dest: "{{ gitroot }}"
-    version: master
+    version: "{{ git_main_branch }}"
     umask: "{{ umask }}"
     track_submodules: no
   become: yes
