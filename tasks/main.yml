@@ -172,7 +172,7 @@
 # Civi updates
 - block:
   - name: Upgrade the Civi DB
-    shell: "PATH=$HOME/bin:$PATH;cv -n upgrade:db --cwd {{ webroot }}"
+    shell: "PATH=$HOME/bin:$PATH;cv -n upgrade:db --cwd {{ webroot }} -vv"
     become: yes
     become_user: "{{ run_as_user }}"
     environment:
