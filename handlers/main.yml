@@ -1,3 +1,5 @@
 - name: cv flush
   shell: "PATH=$HOME/bin:$PATH;cv flush --cwd {{ webroot }}"
   when: civicrm == 'Yes'
+  become: yes
+  become_user: "{{ run_as_user }}"
