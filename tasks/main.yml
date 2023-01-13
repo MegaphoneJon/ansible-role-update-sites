@@ -116,7 +116,6 @@
   git:
     repo: "{{ git_repo_url }}"
     dest: "{{ gitroot }}"
-    version: "{{ git_main_branch }}"
     umask: "{{ umask }}"
     track_submodules: no
   become: yes
@@ -151,9 +150,7 @@
 # WP updates
 - block:
   - name: Upgrade the WP DB
-    command: "wp core update-db"
-    args:
-      chdir: "{{ webroot }}"
+    command: "wp core update-db --path='{{ webroot }}'"
     become: yes
     become_user: "{{ run_as_user }}"
     environment:
@@ -161,9 +158,7 @@
     when: latest_core_version.stdout is defined and latest_core_version.stdout != ""
 
   - name: Clear "last updated" times so plugin updates are reflected in monitoring
-    command: wp transient delete --network --all
-    args:
-      chdir: "{{ webroot }}"
+    command: "wp transient delete --network --all --path='{{ webroot }}'"
     become: yes
     become_user: "{{ run_as_user }}"
     changed_when: false
