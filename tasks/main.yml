@@ -6,7 +6,7 @@
   become: yes
   become_user: "{{ run_as_user }}"
   changed_when: no
-  when: cms == 'Drupal' and contract_type is search("Drupal Maintenance")
+  when: cms == 'Drupal' and contract_type is search("Drupal Maintenance") and freeze_cms != "1"
 
 - name: See if WP core needs updating
   command: wp core check-update --field=version --format=csv
@@ -15,7 +15,7 @@
   register: latest_core_version
   changed_when: false
   failed_when: false
-  when: cms == 'WordPress' and contract_type is search("WordPress Maintenance")
+  when: cms == 'WordPress' and contract_type is search("WordPress Maintenance") and freeze_cms != "1"
 
 - name: Get the latest CiviCRM version number
   local_action:
@@ -42,7 +42,7 @@
     patterns: "{{ cms_db_name }}.upgradebackup.sql.gz"
     age_stamp: ctime
   register: old_cms_db_backups
-  when: contract_type is search("Maintenance")
+  when: contract_type is search("Maintenance") and freeze_cms != "1"
 
 - name: Delete old CMS database backups
   file:
@@ -51,7 +51,7 @@
   become: yes
   become_user: "{{ run_as_user }}"
   with_items: "{{ old_cms_db_backups.files }}"
-  when: old_cms_db_backups.files is defined and old_cms_db_backups.matched > 0
+  when: old_cms_db_backups.files is defined and old_cms_db_backups.matched > 0 and freeze_cms != "1"
 
 - name: Check if CMS db backup already exists
   stat:
@@ -59,7 +59,7 @@
   register: existing_cms_backup
   become: yes
   become_user: "{{ run_as_user }}"
-  when: latest_core_version.stdout is defined and latest_core_version.stdout != ""
+  when: latest_core_version.stdout is defined and latest_core_version.stdout != "" and freeze_cms != "1"
 
 - name: Back up the databases
   mysql_db:
@@ -71,7 +71,7 @@
     dump_extra_args: --single-transaction=TRUE
   become: yes
   become_user: "{{ run_as_user }}"
-  when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_core_version.stdout is defined and latest_core_version.stdout != ""
+  when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_core_version.stdout is defined and latest_core_version.stdout != ""  and freeze_cms != "1"
 
 - block:
   - name: Find old database backups
@@ -120,32 +120,31 @@
     track_submodules: no
   become: yes
   become_user: "{{ run_as_user }}"
+  when:  freeze_crm != "1" and freeze_cms != "1"
   notify: cv flush
 
 - name: Composer install (D8)
   composer:
     command: install
     working_dir: "{{ gitroot }}"
-  when: cms == "Drupal8"
+  when: cms == "Drupal8" and freeze_cms != "1"
   become: yes
   become_user: "{{ run_as_user }}"
 
 # Drupal updates
-- block:
-  - name: Check for database updates
-    command: "drush -y --root={{ webroot }} updatedb-status"
-    become: yes
-    become_user: "{{ run_as_user }}"
-    changed_when: no
-    register: updatedb_status
+- name: Check for database updates
+  command: "drush -y --root={{ webroot }} updbst"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  changed_when: no
+  register: updatedb_status
+  when: (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance")
 
-  - name: Run database updates
-    command: "drush -y --root={{ webroot }} updatedb"
-    when: updatedb_status.stdout != 'No database updates required'
-    become: yes
-    become_user: "{{ run_as_user }}"
-
-  when: cms == 'Drupal' and contract_type is search("Drupal Maintenance")
+- name: Run database updates
+  command: "drush -y --root={{ webroot }} updatedb"
+  become: yes
+  become_user: "{{ run_as_user }}"
+  when: (cms == 'Drupal' or cms == 'Drupal8') and not(updatedb_status.stdout == 'No database updates required' or updatedb_status.stderr == ' [success] No pending updates.') and freeze_cms != "1"
 
 # WP updates
 - block:
@@ -155,14 +154,14 @@
     become_user: "{{ run_as_user }}"
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
-    when: latest_core_version.stdout is defined and latest_core_version.stdout != ""
+    when: latest_core_version.stdout is defined and latest_core_version.stdout != "" and freeze_cms != "1"
 
   - name: Clear "last updated" times so plugin updates are reflected in monitoring
     command: "wp transient delete --network --all --path='{{ webroot }}'"
     become: yes
     become_user: "{{ run_as_user }}"
     changed_when: false
-  when: cms == 'WordPress' and contract_type is search("WordPress Maintenance")
+  when: cms == 'WordPress' and contract_type is search("WordPress Maintenance") and freeze_cms != "1"
 
 # Civi updates
 - block:
