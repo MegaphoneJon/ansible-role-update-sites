@@ -3,7 +3,6 @@
 - name: Get current Drupal core version
   command: "drush -y --root={{ webroot }} status --fields=drupal-version --field-labels=0"
   register: latest_core_version
-  become: yes
   become_user: "{{ run_as_user }}"
   changed_when: no
   when: cms == 'Drupal' and contract_type is search("Drupal Maintenance") and freeze_cms != "1"
@@ -48,7 +47,6 @@
   file:
     path: "{{ item.path }}"
     state: absent
-  become: yes
   become_user: "{{ run_as_user }}"
   with_items: "{{ old_cms_db_backups.files }}"
   when: old_cms_db_backups.files is defined and old_cms_db_backups.matched > 0 and freeze_cms != "1"
@@ -57,7 +55,6 @@
   stat:
     path: "{{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql.gz"
   register: existing_cms_backup
-  become: yes
   become_user: "{{ run_as_user }}"
   when: latest_core_version.stdout is defined and latest_core_version.stdout != "" and freeze_cms != "1"
 
@@ -69,7 +66,6 @@
     login_user: "{{ db_user }}"
     login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
     dump_extra_args: --single-transaction=TRUE
-  become: yes
   become_user: "{{ run_as_user }}"
   when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_core_version.stdout is defined and latest_core_version.stdout != ""  and freeze_cms != "1"
 
@@ -86,7 +82,6 @@
     file:
       path: "{{ item.path }}"
       state: absent
-    become: yes
     become_user: "{{ run_as_user }}"
     with_items: "{{ old_db_backups.files }}"
     when: old_db_backups.files is defined and old_db_backups.matched > 0
@@ -95,7 +90,6 @@
     stat:
       path: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql.gz"
     register: existing_backup
-    become: yes
     become_user: "{{ run_as_user }}"
 
   - name: Back up the databases
@@ -106,7 +100,6 @@
       login_user: "{{ db_user }}"
       login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
       dump_extra_args: --single-transaction=TRUE
-    become: yes
     become_user: "{{ run_as_user }}"
     when: existing_backup.stat is defined and existing_backup.stat.exists == false
   when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
@@ -118,7 +111,6 @@
     dest: "{{ gitroot }}"
     umask: "{{ umask }}"
     track_submodules: no
-  become: yes
   become_user: "{{ run_as_user }}"
   when:  freeze_crm != "1" and freeze_cms != "1"
   notify: cv flush
@@ -128,13 +120,11 @@
     command: install
     working_dir: "{{ gitroot }}"
   when: cms == "Drupal8" and freeze_cms != "1"
-  become: yes
   become_user: "{{ run_as_user }}"
 
 # Drupal updates
 - name: Check for database updates
   command: "drush -y --root={{ webroot }} updbst"
-  become: yes
   become_user: "{{ run_as_user }}"
   changed_when: no
   register: updatedb_status
@@ -142,7 +132,6 @@
 
 - name: Run database updates
   command: "drush -y --root={{ webroot }} updatedb"
-  become: yes
   become_user: "{{ run_as_user }}"
   when: (cms == 'Drupal' or cms == 'Drupal8') and not(updatedb_status.stdout == 'No database updates required' or updatedb_status.stderr == ' [success] No pending updates.') and freeze_cms != "1"
 
@@ -150,7 +139,6 @@
 - block:
   - name: Upgrade the WP DB
     command: "wp core update-db --path='{{ webroot }}'"
-    become: yes
     become_user: "{{ run_as_user }}"
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
@@ -158,7 +146,6 @@
 
   - name: Clear "last updated" times so plugin updates are reflected in monitoring
     command: "wp transient delete --network --all --path='{{ webroot }}'"
-    become: yes
     become_user: "{{ run_as_user }}"
     changed_when: false
   when: cms == 'WordPress' and contract_type is search("WordPress Maintenance") and freeze_cms != "1"
@@ -167,7 +154,6 @@
 - block:
   - name: Upgrade the Civi DB
     shell: "PATH=$HOME/bin:$PATH;cv -n upgrade:db --cwd {{ webroot }} -vv"
-    become: yes
     become_user: "{{ run_as_user }}"
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
@@ -176,7 +162,6 @@
 
   - name: Check for pending extension database updates
     shell: "PATH=$HOME/bin:$PATH;cv ev 'return CRM_Extension_Upgrades::hasPending();' --cwd {{ webroot }}"
-    become: yes
     become_user: "{{ run_as_user }}"
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
@@ -186,7 +171,6 @@
 
   - name: Run extension database updates
     shell: "PATH=$HOME/bin:$PATH;cv -n ext:upgrade-db --cwd {{ webroot }}"
-    become: yes
     become_user: "{{ run_as_user }}"
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
