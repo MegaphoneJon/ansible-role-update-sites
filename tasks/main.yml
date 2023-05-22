@@ -2,7 +2,7 @@
 # Gather data about CMS/CRM updates needed.
 - name: Get current Drupal core version
   command: "drush -y --root={{ webroot }} status --fields=drupal-version --field-labels=0"
-  register: latest_core_version
+  register: latest_civi_core_version
   become_user: "{{ run_as_user }}"
   changed_when: no
   when: cms == 'Drupal' and contract_type is search("Drupal Maintenance") and freeze_cms != "1"
@@ -11,7 +11,7 @@
   command: wp core check-update --field=version --format=csv
   args:
     chdir: "{{ webroot }}"
-  register: latest_core_version
+  register: latest_wp_core_version
   changed_when: false
   failed_when: false
   when: cms == 'WordPress' and contract_type is search("WordPress Maintenance") and freeze_cms != "1"
@@ -24,6 +24,7 @@
   run_once: true
   changed_when: false
   failed_when: false
+  become: no
   register: civi_ver
   when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
 
@@ -56,7 +57,7 @@
     path: "{{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql.gz"
   register: existing_cms_backup
   become_user: "{{ run_as_user }}"
-  when: latest_core_version.stdout is defined and latest_core_version.stdout != "" and freeze_cms != "1"
+  when: latest_civi_core_version.stdout is defined and latest_civi_core_version.stdout != "" and freeze_cms != "1"
 
 - name: Back up the databases
   mysql_db:
@@ -67,7 +68,7 @@
     login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
     dump_extra_args: --single-transaction=TRUE
   become_user: "{{ run_as_user }}"
-  when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_core_version.stdout is defined and latest_core_version.stdout != ""  and freeze_cms != "1"
+  when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_civi_core_version.stdout is defined and latest_civi_core_version.stdout != ""  and freeze_cms != "1"
 
 - block:
   - name: Find old database backups
@@ -142,7 +143,7 @@
     become_user: "{{ run_as_user }}"
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
-    when: latest_core_version.stdout is defined and latest_core_version.stdout != "" and freeze_cms != "1"
+    when: latest_wp_core_version.stdout is defined and latest_wp_core_version.stdout != "" and freeze_cms != "1"
 
   - name: Clear "last updated" times so plugin updates are reflected in monitoring
     command: "wp transient delete --network --all --path='{{ webroot }}'"
