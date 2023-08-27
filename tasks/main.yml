@@ -68,7 +68,7 @@
     login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
     dump_extra_args: --single-transaction=TRUE
   become_user: "{{ run_as_user }}"
-  when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_civi_core_version.stdout is defined and latest_civi_core_version.stdout != ""  and freeze_cms != "1"
+  when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_civi_core_version.stdout is defined and latest_civi_core_version.stdout != ""  and freeze_cms != "1" and env == 'Live'
 
 - block:
   - name: Find old database backups
@@ -103,7 +103,7 @@
       dump_extra_args: --single-transaction=TRUE
     become_user: "{{ run_as_user }}"
     when: existing_backup.stat is defined and existing_backup.stat.exists == false
-  when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
+  when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes' and env == 'Live'
 
 # git pull.  Try to do this as late as possible so upgrades aren't pending for long.
 - name: git pull
