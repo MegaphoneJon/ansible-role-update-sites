@@ -4,6 +4,8 @@
   command: "drush -y --root={{ webroot }} status --fields=drupal-version --field-labels=0"
   register: latest_civi_core_version
   become_user: "{{ run_as_user }}"
+  environment:
+    PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
   changed_when: no
   when: cms == 'Drupal' and contract_type is search("Drupal Maintenance") and freeze_cms != "1"
 
@@ -129,6 +131,8 @@
 - name: Check for database updates
   command: "drush -y --root={{ webroot }} updbst"
   become_user: "{{ run_as_user }}"
+  environment:
+    PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
   changed_when: no
   register: updatedb_status
   when: (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance")
@@ -136,6 +140,8 @@
 - name: Run database updates
   command: "drush -y --root={{ webroot }} updatedb"
   become_user: "{{ run_as_user }}"
+  environment:
+    PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
   when: (cms == 'Drupal' or cms == 'Drupal8') and not(updatedb_status.stdout == 'No database updates required' or updatedb_status.stderr == ' [success] No pending updates.') and freeze_cms != "1"
 
 # WP updates
