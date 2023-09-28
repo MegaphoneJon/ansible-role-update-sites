@@ -61,19 +61,20 @@
   become_user: "{{ run_as_user }}"
   when: latest_civi_core_version.stdout is defined and latest_civi_core_version.stdout != "" and freeze_cms != "1"
 
-- name: Back up the databases
+- name: Back up the CMS database
   mysql_db:
     state: dump
     name: "{{ cms_db_name }}"
     target: "{{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql.gz"
     login_user: "{{ db_user }}"
     login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
+    login_host: "{{ db_host | default('localhost', true) }}"
     dump_extra_args: --single-transaction=TRUE
   become_user: "{{ run_as_user }}"
   when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_civi_core_version.stdout is defined and latest_civi_core_version.stdout != ""  and freeze_cms != "1" and env == 'Live'
 
 - block:
-  - name: Find old database backups
+  - name: Find old Civi database backups
     find:
       age: 1d
       path: "{{ sqldumps_path }}"
@@ -81,7 +82,7 @@
       age_stamp: ctime
     register: old_db_backups
 
-  - name: Delete old database backups
+  - name: Delete old Civi database backups
     file:
       path: "{{ item.path }}"
       state: absent
@@ -89,19 +90,20 @@
     with_items: "{{ old_db_backups.files }}"
     when: old_db_backups.files is defined and old_db_backups.matched > 0
 
-  - name: Check if db already exists
+  - name: Check if Civi db backup already exists
     stat:
       path: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql.gz"
     register: existing_backup
     become_user: "{{ run_as_user }}"
 
-  - name: Back up the databases
+  - name: Back up the Civi database
     mysql_db:
       state: dump
       name: "{{ crm_db_name }}"
       target: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql.gz"
       login_user: "{{ db_user }}"
       login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
+      login_host: "{{ db_host | default('localhost', true) }}"
       dump_extra_args: --single-transaction=TRUE
     become_user: "{{ run_as_user }}"
     when: existing_backup.stat is defined and existing_backup.stat.exists == false
