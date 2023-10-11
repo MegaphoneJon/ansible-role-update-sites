@@ -69,15 +69,15 @@
     login_user: "{{ db_user }}"
     login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
     login_host: "{{ db_host | default('localhost', true) }}"
-    single_transaction: TRUE
+    single_transaction: true
+  register: cms_db_backed_up
   become_user: "{{ run_as_user }}"
   when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_civi_core_version.stdout is defined and latest_civi_core_version.stdout != ""  and freeze_cms != "1" and env == 'Live'
 
 - name: gzip database with --rsyncable
   command: "gzip --rsyncable {{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql"
   become_user: "{{ run_as_user }}"
-  when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_civi_core_version.stdout is defined and latest_civi_core_version.stdout != ""  and freeze_cms != "1" and env == 'Live'
-
+  when: cms_db_backed_up is defined and cms_db_backed_up.changed == true
 
 - block:
   - name: Find old Civi database backups
@@ -110,15 +110,17 @@
       login_user: "{{ db_user }}"
       login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
       login_host: "{{ db_host | default('localhost', true) }}"
-      single_transaction: TRUE
+      single_transaction: true
+    register: crm_db_backed_up
     become_user: "{{ run_as_user }}"
     when: existing_backup.stat is defined and existing_backup.stat.exists == false
+
+  - name: gzip database with --rsyncable
+    command: "gzip --rsyncable {{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql"
+    become_user: "{{ run_as_user }}"
+    when: crm_db_backed_up is defined and crm_db_backed_up.changed == true
   when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes' and env == 'Live'
 
-- name: gzip database with --rsyncable
-  command: "gzip --rsyncable {{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql"
-  become_user: "{{ run_as_user }}"
-  when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes' and env == 'Live'
 
 # git pull.  Try to do this as late as possible so upgrades aren't pending for long.
 - name: git pull
