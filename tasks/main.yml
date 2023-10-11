@@ -118,7 +118,7 @@
 - name: gzip database with --rsyncable
   command: "gzip --rsyncable {{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql"
   become_user: "{{ run_as_user }}"
-  when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_civi_core_version.stdout is defined and latest_civi_core_version.stdout != ""  and freeze_cms != "1" and env == 'Live'
+  when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes' and env == 'Live'
 
 # git pull.  Try to do this as late as possible so upgrades aren't pending for long.
 - name: git pull
