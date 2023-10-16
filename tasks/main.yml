@@ -59,7 +59,7 @@
     path: "{{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql.gz"
   register: existing_cms_backup
   become_user: "{{ run_as_user }}"
-  when: latest_civi_core_version.stdout is defined and latest_civi_core_version.stdout != "" and freeze_cms != "1"
+  when: freeze_cms != "1"
 
 - name: Back up the CMS database
   mysql_db:
@@ -72,7 +72,7 @@
     single_transaction: true
   register: cms_db_backed_up
   become_user: "{{ run_as_user }}"
-  when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and latest_civi_core_version.stdout is defined and latest_civi_core_version.stdout != ""  and freeze_cms != "1" and env == 'Live'
+  when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and freeze_cms != "1" and env == 'Live'
 
 - name: gzip database with --rsyncable
   command: "gzip --rsyncable {{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql"
