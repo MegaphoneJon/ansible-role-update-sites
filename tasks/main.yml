@@ -130,7 +130,7 @@
     umask: "{{ umask }}"
     track_submodules: no
   become_user: "{{ run_as_user }}"
-  when:  freeze_crm != "1" and freeze_cms != "1"
+  when:  freeze_crm != "1" or freeze_cms != "1"
   notify:
     - cv flush
     - clear Drupal cache
