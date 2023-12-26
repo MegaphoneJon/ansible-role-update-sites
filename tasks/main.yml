@@ -1,7 +1,16 @@
 ---
 # Gather data about CMS/CRM updates needed.
+- name: Set drush path
+  set_fact:
+    drush: drush
+
+- name: Set drush path (D9+)
+  set_fact:
+    drush: "{{ gitroot }}/vendor/bin/drush"
+  when: cms == 'Drupal8'
+
 - name: Get current Drupal core version
-  command: "drush -y --root={{ webroot }} status --fields=drupal-version --field-labels=0"
+  command: "{{ drush }} -y --root={{ webroot }} status --fields=drupal-version --field-labels=0"
   register: latest_civi_core_version
   become_user: "{{ run_as_user }}"
   environment:
@@ -135,10 +144,17 @@
     - cv flush
     - clear Drupal cache
 
+#- name: Composer install (D8)
+#  ansible.builtin.command: 
+#    cmd: composer install
+#    chdir: "{{ gitroot }}"
+#  when: cms == "Drupal8" and freeze_cms != "1"
+    
 - name: Composer install (D8)
   composer:
     command: install
     working_dir: "{{ gitroot }}"
+  become_user: "{{ run_as_user }}"
   when: cms == "Drupal8" and freeze_cms != "1"
 
 # Civi updates
@@ -172,7 +188,7 @@
 
 # Drupal updates
 - name: Check for database updates
-  command: "drush -y --root={{ webroot }} updbst"
+  command: "{{ drush }} -y --root={{ webroot }} updbst"
   become_user: "{{ run_as_user }}"
   environment:
     PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
@@ -181,7 +197,7 @@
   when: (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance")
 
 - name: Run database updates
-  command: "drush -y --root={{ webroot }} updatedb"
+  ansible.builtin.command: "{{ drush }} -y --root={{ webroot }} updatedb"
   become_user: "{{ run_as_user }}"
   environment:
     PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
