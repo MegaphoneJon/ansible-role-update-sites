@@ -71,22 +71,9 @@
   when: freeze_cms != "1"
 
 - name: Back up the CMS database
-  mysql_db:
-    state: dump
-    name: "{{ cms_db_name }}"
-    target: "{{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql"
-    login_user: "{{ db_user }}"
-    login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
-    login_host: "{{ db_host | default('localhost', true) }}"
-    single_transaction: true
-  register: cms_db_backed_up
+  shell: "mysqldump --single-transaction {{ cms_db_name }} | gzip --rsyncable > {{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql.gz"
   become_user: "{{ run_as_user }}"
   when: existing_cms_backup.stat is defined and existing_cms_backup.stat.exists == false and freeze_cms != "1" and env == 'Live'
-
-- name: gzip database with --rsyncable
-  command: "gzip --rsyncable {{ sqldumps_path }}/{{ cms_db_name }}.upgradebackup.sql"
-  become_user: "{{ run_as_user }}"
-  when: cms_db_backed_up is defined and cms_db_backed_up.changed == true
 
 - block:
   - name: Find old Civi database backups
@@ -111,23 +98,10 @@
     register: existing_backup
     become_user: "{{ run_as_user }}"
 
-  - name: Back up the Civi database
-    mysql_db:
-      state: dump
-      name: "{{ crm_db_name }}"
-      target: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql"
-      login_user: "{{ db_user }}"
-      login_password: "{{ lookup('passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }}"
-      login_host: "{{ db_host | default('localhost', true) }}"
-      single_transaction: true
-    register: crm_db_backed_up
+  - name: Back up the CRM database
+    shell: "mysqldump --single-transaction {{ crm_db_name }} | gzip --rsyncable > {{ sqldumps_path }}/{{ crm_db_name }}.upgradebackup.sql.gz"
     become_user: "{{ run_as_user }}"
     when: existing_backup.stat is defined and existing_backup.stat.exists == false
-
-  - name: gzip database with --rsyncable
-    command: "gzip --rsyncable {{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql"
-    become_user: "{{ run_as_user }}"
-    when: crm_db_backed_up is defined and crm_db_backed_up.changed == true
   when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes' and env == 'Live'
 
 
@@ -144,12 +118,6 @@
     - cv flush
     - clear Drupal cache
 
-#- name: Composer install (D8)
-#  ansible.builtin.command: 
-#    cmd: composer install
-#    chdir: "{{ gitroot }}"
-#  when: cms == "Drupal8" and freeze_cms != "1"
-    
 - name: Composer install (D8)
   composer:
     command: install
