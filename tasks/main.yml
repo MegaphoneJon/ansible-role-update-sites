@@ -185,3 +185,10 @@
     become_user: "{{ run_as_user }}"
     changed_when: false
   when: cms == 'WordPress' and contract_type is search("WordPress Maintenance") and freeze_cms != "1"
+
+- name: Flush permalink cache
+  command: "wp rewrite flush --path='{{ webroot }}'"
+  become_user: "{{ run_as_user }}"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
+  when: cms == 'WordPress'
