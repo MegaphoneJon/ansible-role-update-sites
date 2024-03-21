@@ -94,7 +94,7 @@
 
   - name: Check if Civi db backup already exists
     stat:
-      path: "{{ sqldumps_path }}/{{ crm_db_name }}.pre-update.sql.gz"
+      path: "{{ sqldumps_path }}/{{ crm_db_name }}.upgradebackup.sql.gz"
     register: existing_backup
     become_user: "{{ run_as_user }}"
 
