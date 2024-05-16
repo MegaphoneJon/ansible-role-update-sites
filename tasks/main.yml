@@ -27,6 +27,7 @@
   failed_when: false
   when: cms == 'WordPress' and contract_type is search("WordPress Maintenance") and freeze_cms != "1"
 
+  # Unfortunately, must be unconditional, because the condition is against the first host, which may not have Civi.
 - name: Get the latest CiviCRM version number
   local_action:
     module: uri
@@ -37,7 +38,6 @@
   failed_when: false
   become: no
   register: civi_ver
-  when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
 
 - name: check installed CiviCRM version
   command: "mysql -u{{ db_user }} -p{{ lookup('community.general.passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }} {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'"
