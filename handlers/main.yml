@@ -1,19 +1,16 @@
 - name: cv flush
   shell: "PATH=$HOME/bin:$PATH;cv flush --cwd {{ webroot }}"
   when: civicrm == 'Yes'
-  become: yes
   become_user: "{{ run_as_user }}"
 
 - name: drush cc all
   shell: "drush cc all --root={{ webroot }}"
-  become: yes
   become_user: "{{ run_as_user }}"
   when: cms == "Drupal"
   listen: "clear Drupal cache"
 
 - name: drush cr
   shell: "{{ drush }} cr --root={{ webroot }}"
-  become: yes
   become_user: "{{ run_as_user }}"
   when: cms == "Drupal8"
   listen: "clear Drupal cache"

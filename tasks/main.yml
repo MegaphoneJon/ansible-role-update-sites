@@ -112,6 +112,8 @@
     dest: "{{ gitroot }}"
     umask: "{{ umask }}"
     track_submodules: no
+    key_file: "{{ ssh_key_location + '/id_ed25519' if ssh_key_location is defined }}"
+    ssh_opts: "{{ '-o UserKnownHostsFile=' + ssh_key_location + '/known_hosts' if ssh_key_location is defined }}"
   become_user: "{{ run_as_user }}"
   when:  freeze_crm != "1" or freeze_cms != "1"
   notify:
@@ -122,6 +124,7 @@
   composer:
     command: install
     working_dir: "{{ gitroot }}"
+    composer_executable: "{{ ansible_env.HOME + '/bin/composer' if 'mayfirst_ng_site' in group_names else '/usr/local/bin/composer' }}"
   become_user: "{{ run_as_user }}"
   when: cms == "Drupal8" and freeze_cms != "1"
 
@@ -169,7 +172,7 @@
   become_user: "{{ run_as_user }}"
   environment:
     PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
-  when: (cms == 'Drupal' or cms == 'Drupal8') and not(updatedb_status.stdout == 'No database updates required' or updatedb_status.stderr == ' [success] No pending updates.') and freeze_cms != "1"
+  when: (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance") and not(updatedb_status.stdout == 'No database updates required' or updatedb_status.stderr == ' [success] No pending updates.') and freeze_cms != "1"
 
 # WP updates
 - block:
