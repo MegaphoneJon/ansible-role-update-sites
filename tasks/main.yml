@@ -131,7 +131,7 @@
 # Civi updates
 - block:
   - name: Upgrade the Civi DB
-    shell: "PATH=$HOME/bin:$PATH;cv -n upgrade:db --cwd {{ webroot }} -vv"
+    shell: "PATH=$HOME/bin:$PATH;cv -n updb --cwd {{ webroot }} -vv"
     become_user: "{{ run_as_user }}"
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
@@ -148,7 +148,7 @@
     notify: cv flush
 
   - name: Run extension database updates
-    shell: "PATH=$HOME/bin:$PATH;cv -n ext:upgrade-db --cwd {{ webroot }}"
+    shell: "PATH=$HOME/bin:$PATH;cv -n updb --cwd {{ webroot }}"
     become_user: "{{ run_as_user }}"
     environment:
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
