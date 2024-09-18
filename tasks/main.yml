@@ -125,6 +125,7 @@
     command: install
     working_dir: "{{ gitroot }}"
     composer_executable: "{{ ansible_env.HOME + '/bin/composer' if 'mayfirst_ng_site' in group_names else '/usr/local/bin/composer' }}"
+    executable: "{{ php_path|default(omit) }}" 
   become_user: "{{ run_as_user }}"
   when: cms == "Drupal8" and freeze_cms != "1"
 
