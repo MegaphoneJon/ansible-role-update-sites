@@ -117,7 +117,7 @@
   become_user: "{{ run_as_user }}"
   when:  freeze_crm != "1" or freeze_cms != "1"
   notify:
-    - cv flush
+#    - cv flush
     - clear Drupal cache
 
 - name: Composer install (D8)
