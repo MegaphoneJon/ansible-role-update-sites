@@ -117,8 +117,8 @@
   become_user: "{{ run_as_user }}"
   when:  freeze_crm != "1" or freeze_cms != "1"
   notify:
-#    - cv flush
     - clear Drupal cache
+  register: git_pulled
 
 - name: Composer install (D8)
   composer:
@@ -127,7 +127,7 @@
     composer_executable: "{{ ansible_env.HOME + '/bin/composer' if 'mayfirst_ng_site' in group_names else '/usr/local/bin/composer' }}"
     executable: "{{ php_path|default(omit) }}" 
   become_user: "{{ run_as_user }}"
-  when: cms == "Drupal8" and freeze_cms != "1"
+  when: cms == "Drupal8" and freeze_cms != "1" and (git_pulled.after != git_pulled.before)
 
 # Civi updates
 - block:
@@ -155,7 +155,7 @@
       PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
     when: pendingUpdates.stdout == "true"
     notify: cv flush
-  when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
+  when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes' and (git_pulled.after != git_pulled.before)
   become_user: "{{ run_as_user }}"
 
 # Drupal updates
@@ -173,7 +173,7 @@
   become_user: "{{ run_as_user }}"
   environment:
     PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
-  when: (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance") and not(updatedb_status.stdout == 'No database updates required' or updatedb_status.stderr == ' [success] No pending updates.') and freeze_cms != "1"
+  when: (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance") and not(updatedb_status.stdout == 'No database updates required' or updatedb_status.stderr == ' [success] No pending updates.') and freeze_cms != "1" and (git_pulled.after != git_pulled.before)
 
 # WP updates
 - block:
@@ -195,4 +195,4 @@
   become_user: "{{ run_as_user }}"
   environment:
     PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
-  when: cms == 'WordPress'
+  when: cms == 'WordPress' and (git_pulled.after != git_pulled.before)
