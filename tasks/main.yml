@@ -80,7 +80,7 @@
     find:
       age: 1d
       path: "{{ sqldumps_path }}"
-      patterns: "{{ crm_db_name }}.pre-*.sql.gz"
+      patterns: "{{ crm_db_name }}.upgradebackup.sql.gz"
       age_stamp: ctime
     register: old_db_backups
 
