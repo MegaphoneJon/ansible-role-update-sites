@@ -7,7 +7,7 @@
 - name: Set drush path (D9+)
   set_fact:
     drush: "{{ gitroot }}/vendor/bin/drush"
-  when: cms == 'Drupal8'
+  when: cms == 'Drupal8' and freeze_cms != "1"
 
 - name: Get current Drupal core version
   command: "{{ drush }} -y --root={{ webroot }} status --fields=drupal-version --field-labels=0"
@@ -38,6 +38,7 @@
   failed_when: false
   become: no
   register: civi_ver
+  when: freeze_crm != "1"
 
 - name: check installed CiviCRM version
   command: "mysql -u{{ db_user }} -p{{ lookup('community.general.passwordstore', client + '/' + hostname + '/' + bare_url + '/mysql') }} {{ crm_db_name }} -N -s -e'SELECT version from civicrm_domain WHERE id = 1'"
@@ -166,14 +167,14 @@
     PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
   changed_when: no
   register: updatedb_status
-  when: (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance")
+  when: (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance") and freeze_cms != "1"
 
 - name: Run database updates
   ansible.builtin.command: "{{ drush }} -y --root={{ webroot }} updatedb"
   become_user: "{{ run_as_user }}"
   environment:
     PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
-  when: (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance") and not(updatedb_status.stdout == 'No database updates required' or updatedb_status.stderr == ' [success] No pending updates.') and freeze_cms != "1" and (git_pulled.after != git_pulled.before)
+  when: freeze_cms != "1" and (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance") and not(updatedb_status.stdout == 'No database updates required' or updatedb_status.stderr == ' [success] No pending updates.') and (git_pulled.after != git_pulled.before)
 
 # WP updates
 - block:
@@ -195,4 +196,4 @@
   become_user: "{{ run_as_user }}"
   environment:
     PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
-  when: cms == 'WordPress' and (git_pulled.after != git_pulled.before)
+  when: cms == 'WordPress' and (git_pulled.after != git_pulled.before) and freeze_cms != "1"
