@@ -113,8 +113,8 @@
     dest: "{{ gitroot }}"
     umask: "{{ umask }}"
     track_submodules: no
-    key_file: "{{ ssh_key_location + '/id_ed25519' if ssh_key_location is defined }}"
-    ssh_opts: "{{ '-o UserKnownHostsFile=' + ssh_key_location + '/known_hosts' if ssh_key_location is defined }}"
+    key_file: "{{ ssh_key_location + '/id_ed25519' if ssh_key_location is defined else omit }}"
+    ssh_opts: "{{ '-o UserKnownHostsFile=' + ssh_key_location + '/known_hosts' if ssh_key_location is defined else omit }}"
   become_user: "{{ run_as_user }}"
   when:  freeze_crm != "1" or freeze_cms != "1"
   notify:
