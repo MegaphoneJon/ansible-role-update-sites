@@ -24,6 +24,13 @@
   set_fact:
     drush: drush
 
+- name: Gather facts
+  setup:
+
+- name: Start phasing out civicrm_custom_path - especially for Standalone
+  set_fact:
+    extensions_path: "{{ 'ext' if cms == 'Standalone' else civicrm_custom_path + '/extensions' }}"
+
 - name: Set drush path (D9+)
   set_fact:
     drush: "{{ gitroot }}/vendor/bin/drush"
@@ -137,9 +144,22 @@
     ssh_opts: "{{ '-o UserKnownHostsFile=' + ssh_key_location + '/known_hosts' if ssh_key_location is defined else omit }}"
   become_user: "{{ run_as_user }}"
   when:  freeze_crm != "1" or freeze_cms != "1"
+  register: git_pull_result
   notify:
     - clear Drupal cache
-    - cv flush
+
+- name: Check if CiviCRM files changed in git pull
+  command: "git diff --name-only {{ git_pull_result.before }} {{ git_pull_result.after }} -- {{ civiroot }} {{ extensions_path }}"
+  args:
+    chdir: "{{ gitroot }}"
+  become_user: "{{ run_as_user }}"
+  register: civi_changed_files
+  changed_when: civi_changed_files.stdout != ""
+  when:
+    - civicrm == 'Yes'
+    - git_pull_result is changed
+    - git_pull_result.before is not none
+  notify: cv flush
 
 - name: Composer install (D8)
   composer:
