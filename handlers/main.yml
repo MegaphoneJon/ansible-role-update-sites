@@ -2,6 +2,7 @@
   shell: "PATH=$HOME/bin:$PATH;cv flush --cwd {{ webroot }}"
   when: civicrm == 'Yes'
   become_user: "{{ run_as_user }}"
+  listen: "cv flush"
 
 - name: drush cc all
   shell: "drush cc all --root={{ webroot }}"
