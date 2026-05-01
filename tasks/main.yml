@@ -161,19 +161,36 @@
     - git_pull_result.before is not none
   notify: cv flush
 
-- name: Composer install (D8)
+- name: Check if composer.lock changed in git pull
+  command: "git diff --name-only {{ git_pull_result.before }} {{ git_pull_result.after }} -- composer.lock"
+  args:
+    chdir: "{{ gitroot }}"
+  become_user: "{{ run_as_user }}"
+  register: composer_lock_changed
+  changed_when: false
+  when:
+    - cms == "Drupal8" or cms == "Standalone"
+    - freeze_cms != "1"
+    - git_pull_result is changed
+    - git_pull_result.before is not none
+
+- name: Composer install
   composer:
     command: install
     working_dir: "{{ gitroot }}"
     composer_executable: "{{ ansible_env.HOME + '/bin/composer' if 'mayfirst_ng_site' in group_names else '/usr/local/bin/composer' }}"
-    executable: "{{ php_path|default(omit) }}" 
+    executable: "{{ php_path|default(omit) }}"
   become_user: "{{ run_as_user }}"
-  when: cms == "Drupal8" and freeze_cms != "1"
+  when:
+    - cms == "Drupal8" or cms == "Standalone"
+    - freeze_cms != "1"
+    - composer_lock_changed.stdout is defined
+    - composer_lock_changed.stdout != ""
 
 # Civi updates
 - block:
 
-  - name: Check for pending extension database updates
+  - name: Check for pending database updates
     shell: "PATH=$HOME/bin:$PATH;cv ev 'return (bool) (CRM_Core_BAO_Domain::isDBUpdateRequired() || CRM_Extension_Upgrades::hasPending());' --cwd {{ webroot }}"
     become_user: "{{ run_as_user }}"
     environment:
@@ -181,7 +198,7 @@
     changed_when: false
     register: pending_updates
 
-  - name: Run extension database updates
+  - name: Run database updates
     shell: "PATH=$HOME/bin:$PATH;cv -n updb --cwd {{ webroot }}"
     become_user: "{{ run_as_user }}"
     environment:
