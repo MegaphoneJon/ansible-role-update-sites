@@ -219,7 +219,7 @@
   register: drupal_updatedb_status
   when: (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance") and freeze_cms != "1"
 
-- name: Run database updates
+- name: Run Drupal database updates
   ansible.builtin.command: "{{ drush }} -y --root={{ webroot }} updatedb"
   become_user: "{{ run_as_user }}"
   environment:
