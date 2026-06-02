@@ -8,7 +8,7 @@
   register: local_head
 
 - name: Get remote HEAD commit
-  command: "git ls-remote {{ git_repo_url }} HEAD"
+  command: "git ls-remote {{ git_repo_url }} {{ 'refs/heads/upgrade' if upgrade_use_branch | default(false) else 'HEAD' }}"
   become_user: "{{ run_as_user }}"
   environment:
     GIT_SSH_COMMAND: "ssh{% if ssh_key_location is defined %} -i {{ ssh_key_location }}/id_ed25519 -o UserKnownHostsFile={{ ssh_key_location }}/known_hosts{% endif %}"
@@ -138,6 +138,7 @@
   git:
     repo: "{{ git_repo_url }}"
     dest: "{{ gitroot }}"
+    version: "{{ 'upgrade' if upgrade_use_branch | default(false) else omit }}"
     umask: "{{ umask }}"
     track_submodules: no
     key_file: "{{ ssh_key_location + '/id_ed25519' if ssh_key_location is defined else omit }}"
