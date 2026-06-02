@@ -41,7 +41,7 @@
   register: latest_civi_core_version
   become_user: "{{ run_as_user }}"
   environment:
-    PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
+    PATH: "{{ ansible_facts.env.HOME }}/bin:{{ ansible_facts.env.PATH }}"
   changed_when: no
   when: cms == 'Drupal' and contract_type is search("Drupal Maintenance") and freeze_cms != "1"
 
@@ -178,7 +178,7 @@
   composer:
     command: install
     working_dir: "{{ gitroot }}"
-    composer_executable: "{{ ansible_env.HOME + '/bin/composer' if 'mayfirst_ng_site' in group_names else '/usr/local/bin/composer' }}"
+    composer_executable: "{{ ansible_facts.env.HOME + '/bin/composer' if 'mayfirst_ng_site' in group_names else '/usr/local/bin/composer' }}"
     executable: "{{ php_path|default(omit) }}"
   become_user: "{{ run_as_user }}"
   when:
@@ -194,7 +194,7 @@
     shell: "PATH=$HOME/bin:$PATH;cv ev 'return (bool) (CRM_Core_BAO_Domain::isDBUpdateRequired() || CRM_Extension_Upgrades::hasPending());' --cwd {{ webroot }}"
     become_user: "{{ run_as_user }}"
     environment:
-      PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
+      PATH: "{{ ansible_facts.env.PATH }}:{{ ansible_facts.env.HOME }}/bin"
     changed_when: false
     register: pending_updates
 
@@ -202,7 +202,7 @@
     shell: "PATH=$HOME/bin:$PATH;cv -n updb --cwd {{ webroot }}"
     become_user: "{{ run_as_user }}"
     environment:
-      PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
+      PATH: "{{ ansible_facts.env.PATH }}:{{ ansible_facts.env.HOME }}/bin"
     when: pending_updates.stdout == "true"
 
   
@@ -214,7 +214,7 @@
   command: "{{ drush }} -y --root={{ webroot }} updbst"
   become_user: "{{ run_as_user }}"
   environment:
-    PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
+    PATH: "{{ ansible_facts.env.HOME }}/bin:{{ ansible_facts.env.PATH }}"
   changed_when: no
   register: drupal_updatedb_status
   when: (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance") and freeze_cms != "1"
@@ -223,7 +223,7 @@
   ansible.builtin.command: "{{ drush }} -y --root={{ webroot }} updatedb"
   become_user: "{{ run_as_user }}"
   environment:
-    PATH: "{{ ansible_env.HOME }}/bin:{{ ansible_env.PATH }}"
+    PATH: "{{ ansible_facts.env.HOME }}/bin:{{ ansible_facts.env.PATH }}"
   when: freeze_cms != "1" and (cms == 'Drupal' or cms == 'Drupal8') and contract_type is search("Drupal Maintenance") and not(drupal_updatedb_status.stdout == 'No database updates required' or drupal_updatedb_status.stderr == ' [success] No pending updates.')
 
 # WP updates
@@ -232,7 +232,7 @@
     command: "wp core update-db --path='{{ webroot }}'"
     become_user: "{{ run_as_user }}"
     environment:
-      PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
+      PATH: "{{ ansible_facts.env.PATH }}:{{ ansible_facts.env.HOME }}/bin"
     when: latest_wp_core_version.stdout is defined and latest_wp_core_version.stdout != "" and freeze_cms != "1"
 
   - name: Clear "last updated" times so plugin updates are reflected in monitoring
@@ -245,5 +245,5 @@
   command: "wp rewrite flush --path='{{ webroot }}'"
   become_user: "{{ run_as_user }}"
   environment:
-    PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/bin"
+    PATH: "{{ ansible_facts.env.PATH }}:{{ ansible_facts.env.HOME }}/bin"
   when: cms == 'WordPress' and freeze_cms != "1"
