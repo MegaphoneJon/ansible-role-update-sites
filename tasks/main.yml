@@ -56,8 +56,8 @@
 
   # Unfortunately, must be unconditional, because the condition is against the first host, which may not have Civi.
 - name: Get the latest CiviCRM version number
-  local_action:
-    module: uri
+  local_action: uri
+  args:
     url: https://latest.civicrm.org/stable.php
     return_content: yes
   run_once: true
