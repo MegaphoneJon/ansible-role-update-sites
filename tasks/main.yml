@@ -17,7 +17,7 @@
 
 - name: Skip remaining tasks if no new commits to pull
   meta: end_host
-  when: local_head.stdout == remote_head.stdout.split()[0]
+  when: local_head.stdout == remote_head.stdout.split()[0] and not (all_tasks | default(false))
 
 # Gather data about CMS/CRM updates needed.
 - name: Set drush path
