@@ -144,7 +144,7 @@
     key_file: "{{ ssh_key_location + '/id_ed25519' if ssh_key_location is defined else omit }}"
     ssh_opts: "{{ '-o UserKnownHostsFile=' + ssh_key_location + '/known_hosts' if ssh_key_location is defined else omit }}"
   become_user: "{{ run_as_user }}"
-  when:  freeze_crm != "1" or freeze_cms != "1"
+  when: freeze_crm != "1" or freeze_cms != "1"
   register: git_pull_result
   notify:
     - clear Drupal cache
@@ -206,7 +206,6 @@
       PATH: "{{ ansible_facts.env.PATH }}:{{ ansible_facts.env.HOME }}/bin"
     when: pending_updates.stdout == "true"
 
-  
   when: contract_type is search("Civi Maintenance") and freeze_crm != "1" and civicrm == 'Yes'
   become_user: "{{ run_as_user }}"
 
